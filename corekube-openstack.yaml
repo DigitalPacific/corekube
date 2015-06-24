@@ -1,63 +1,101 @@
-
- description: >
-   Deploy Kubernetes on a CoreOS cluster that operates on an
-   OpenStack Powered Cloud (Openstack Kilo)
-   Maintainer - Shaun Smekel <shaunsmekel@digitalpacific.com.au> | Github: @the0rem
-
- parameters:
-   kubernetes_minion_count:
-     description: Number of CoreOS machines to deploy as Kubernetes Minion
-     type: number
-     default: 3
-     constraints:
-     - range:
-         min: 1
-         max: 12
-       description: Must be between 2 and 12 servers.
-   keyname:
-     type: string
-     description: Name of keypair to be used for compute instance
-   flavor:
-     type: string
-     default: m1.medium
-     constraints:
-     - allowed_values:
-       - m1.medium
-       - m1.large
-       - m1.xlarge
-       description: |
-         Must be a valid flavor
-   coreos_image:
-     type: string
-     description: Rackspace Cloud Servers CoreOS Alpha (633.1.0)
-     default: "CoreOS"
-   git_command:
-     type: string
-     description: Git repo checkout command
-     default: "/usr/bin/git clone https://github.com/DigitalPacific/overlord ;"
-   flannel_url:
-     type: string
-     description: Flannel Binary URL
-     default: "http://a26736f09be9784cb06f-8d30bd32035bc1ac3e9215d2d6eedfc5.r53.cf1.rackcdn.com/flanneld"
-   discovery_net_interface:
-     type: string
-     description: Host network interface for which the Discovery node will operate over
-     default: "eth0"
-   kubernetes_net_interface:
-     type: string
-     description: Host network interface for which Kubernetes' overlay will operate over
-     default: "eth0"
-   timeout:
-     description: Wait condition timeout seconds
-     type: number
-     default: 600
-   floating-network-id:
-     type: string
-     label: Floating Network ID
-     description: UUID of the external network. The private network created by this stack will route to this network. Any floating IP addresses needed by this stack will also route to this network. 
-
- resources:
   heat_template_version: 2015-04-30
+
+  description: >
+    Deploy Kubernetes on a CoreOS cluster that operates on an
+    OpenStack Powered Cloud (Openstack Kilo)
+    Maintainer - Shaun Smekel <shaunsmekel@digitalpacific.com.au> | Github: @the0rem
+
+  parameters:
+    kubernetes_minion_count:
+      description: Number of CoreOS machines to deploy as Kubernetes Minion
+      type: number
+      default: 3
+      constraints:
+      - range:
+        min: 1
+        max: 12
+        description: Must be between 2 and 12 servers.
+    keyname:
+      type: string
+      description: Name of keypair to be used for compute instance
+    discovery_flavor:
+      type: string
+      default: m1.tiny
+      constraints:
+      - allowed_values:
+        - m1.tiny
+        - m1.small
+        - m1.medium
+        - m1.large
+        - m1.xlarge
+        description: |
+          Must be a valid flavor
+    overlor_flavor:
+      type: string
+      default: m1.tiny
+      constraints:
+      - allowed_values:
+        - m1.tiny
+        - m1.small
+        - m1.medium
+        - m1.large
+        - m1.xlarge
+        description: |
+          Must be a valid flavor
+    master_flavor:
+      type: string
+      default: m1.tiny
+      constraints:
+      - allowed_values:
+        - m1.tiny
+        - m1.small
+        - m1.medium
+        - m1.large
+        - m1.xlarge
+        description: |
+          Must be a valid flavor
+    minion_flavor:
+      type: string
+      default: m1.tiny
+      constraints:
+      - allowed_values:
+        - m1.tiny
+        - m1.small
+        - m1.medium
+        - m1.large
+        - m1.xlarge
+        description: |
+          Must be a valid flavor
+    coreos_image:
+      type: string
+      description: CoreOS Alpha (633.1.0)
+      default: "CoreOS"
+    git_command:
+      type: string
+      description: Git repo checkout command
+      default: "/usr/bin/git clone https://github.com/DigitalPacific/overlord;"
+    flannel_url:
+      type: string
+      description: Flannel Binary URL
+      default: "http://a26736f09be9784cb06f-8d30bd32035bc1ac3e9215d2d6eedfc5.r53.cf1.rackcdn.com/flanneld"
+    discovery_net_interface:
+      type: string
+      description: Host network interface for which the Discovery node will operate over
+      default: "eth0"
+    kubernetes_net_interface:
+      type: string
+      description: Host network interface for which Kubernetes' overlay will operate over
+      default: "eth0"
+    timeout:
+      description: Wait condition timeout seconds
+      type: number
+      default: 600
+    floating-network-id:
+      type: string
+      label: Floating Network ID
+      description: UUID of the external network. The private network created by this stack will route to this network. Any floating IP addresses needed by this stack will also route to this network. 
+
+  resources:
 
    coreos_cluster_uuid:
      type: OS::Heat::RandomString
@@ -151,7 +189,7 @@
      properties:
        key_name: { get_param: keyname }
        image: { get_param: coreos_image }
-       flavor: { get_param: flavor }
+       flavor: { get_param: discovery_flavor }
        name: "discovery"
        networks:
          - port:
@@ -262,7 +300,7 @@
      properties:
        key_name: { get_param: keyname }
        image: { get_param: coreos_image }
-       flavor: { get_param: flavor }
+       flavor: { get_param: overlor_flavor }
        name: "overlord"
        networks:
          - port:
@@ -429,7 +467,7 @@
      properties:
        key_name: { get_param: keyname }
        image: { get_param: coreos_image }
-       flavor: { get_param: flavor }
+       flavor: { get_param: master_flavor }
        name: "kubernetes_master"
        networks:
          - port:
@@ -597,7 +635,7 @@
          properties:
            key_name: { get_param: keyname }
            image: { get_param: coreos_image }
-           flavor: { get_param: flavor }
+           flavor: { get_param: minion_flavor }
            name: kubernetes_minion_%index%
            networks:
             - network: { get_resource: corekube_network }
