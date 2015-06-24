@@ -73,7 +73,7 @@
     git_command:
       type: string
       description: Git repo checkout command
-      default: "/usr/bin/git clone https://github.com/DigitalPacific/overlord;"
+      default: "/usr/bin/git clone https://github.com/DigitalPacific/overlord.git"
     flannel_url:
       type: string
       description: Flannel Binary URL
