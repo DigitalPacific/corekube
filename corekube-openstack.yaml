@@ -30,7 +30,7 @@
         - m1.xlarge
         description: |
           Must be a valid flavor
-    overlor_flavor:
+    overlord_flavor:
       type: string
       default: m1.tiny
       constraints:
@@ -195,10 +195,11 @@
           - port:
               get_resource: discovery_port
         user_data_format: RAW
-        config_drive: "true"
+        config_drive: true
         user_data:
           str_replace:
             template: |
+              #cloud-config
               write_files:
                 - path: /run/get_discovery_interface_ip.sh
                   permissions: '0755'
@@ -299,7 +300,7 @@
       properties:
         key_name: { get_param: keyname }
         image: { get_param: coreos_image }
-        flavor: { get_param: overlor_flavor }
+        flavor: { get_param: overlord_flavor }
         name: "overlord"
         networks:
           - port:
