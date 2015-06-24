@@ -1,4 +1,3 @@
- heat_template_version: 2013-05-23
 
  description: >
    Deploy Kubernetes on a CoreOS cluster that operates on an
@@ -58,6 +57,7 @@
      description: UUID of the external network. The private network created by this stack will route to this network. Any floating IP addresses needed by this stack will also route to this network. 
 
  resources:
+  heat_template_version: 2015-04-30
 
    coreos_cluster_uuid:
      type: OS::Heat::RandomString
