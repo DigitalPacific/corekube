@@ -1,0 +1,101 @@
+#cloud-config
+write_files:
+  - path: /run/setup_etcd_cloudinit_conf.sh
+    permissions: '0755'
+    content:
+      get_file: https://raw.githubusercontent.com/DigitalPacific/corekube/master/cloud-config/setup_etcd_cloudinit_conf.sh
+  - path: /run/get_discovery_ip_port.sh
+    permissions: '0755'
+    content:
+      get_file: https://raw.githubusercontent.com/DigitalPacific/corekube/master/cloud-config/get_discovery_ip_port.sh
+coreos:
+  etcd:
+    name: kubernetes_master
+    discovery: http://%discovery%:2379/v2/keys/discovery/%uuid%
+    addr: $private_ipv4:4001
+    peer-addr: $private_ipv4:7001
+  fleet:
+    public-ip: $private_ipv4
+    metadata: kubernetes_role=master
+  update:
+    group: stable
+    reboot-strategy: off
+  units:
+    - name: setup-etcd-cloudinit-conf.service
+      command: start
+      runtime: true
+      content: |
+        [Unit]
+        Description=Setup environment with private (and public) IP addresses
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/run/setup_etcd_cloudinit_conf.sh
+    - name: etcd.service
+      command: start
+    - name: fleet.service
+      command: start
+    - name: get_discovery_ip_port.service
+      command: start
+      runtime: true
+      content: |
+        # Runs get_discovery_ip_port.sh to have discovery IP &
+        # port ready for consumption by overlord when creating
+        # the Kubernetes' master-api@.service template
+        [Unit]
+        After=network-online.target
+        Requires=network-online.target
+
+        [Service]
+        ExecStart=/usr/bin/bash /run/get_discovery_ip_port.sh
+    - name: flannel-install.service
+      command: start
+      content: |
+        # Installs flannel
+        [Unit]
+        After=network-online.target
+        Requires=network-online.target 
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/wget -N -P /opt/bin %flannel_url%
+        ExecStart=/usr/bin/chmod +x /opt/bin/flanneld
+    - name: flannel.service
+      command: start
+      content: |
+        # Configures & starts flannel
+        [Unit]
+        After=network-online.target etcd.service flannel-install.service
+        Requires=network-online.target etcd.service flannel-install.service
+
+        [Service]
+        ExecStartPre=/usr/bin/etcdctl mk /coreos.com/network/config '{"Network":"10.244.0.0/15", "Backend": {"Type": "vxlan"}}'
+        ExecStart=/opt/bin/flanneld -iface=%kubernetes_net_interface%
+        Restart=always
+        RestartSec=5s
+    - name: flannel-env.path
+      command: start
+      content: |
+        # Ensures flannel env vars are set to use with Docker
+        [Path]
+        PathExists=/run/flannel/subnet.env
+        Unit=docker.service
+    - name: docker.service
+      command: start
+      content: |
+        # Starts new docker server that uses flannel 
+        [Unit]
+        After=flannel-env.path network-online.target flannel.service
+        Requires=flannel-env.path network-online.target flannel.service
+        Description=Docker Application Container Engine
+
+        [Service]
+        EnvironmentFile=/run/flannel/subnet.env
+        ExecStartPre=/bin/mount --make-rprivate /
+        ExecStartPre=/usr/bin/systemctl kill docker.service
+        ExecStart=/usr/bin/docker -d --bip=${FLANNEL_SUBNET} --mtu=${FLANNEL_MTU}
+
+        [Install]
+        WantedBy=multi-user.target
