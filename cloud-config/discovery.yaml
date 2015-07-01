@@ -2,12 +2,18 @@
 write_files:
   - path: /run/get_discovery_interface_ip.sh
     permissions: '0755'
-    content:
-      get_file: https://raw.githubusercontent.com/DigitalPacific/corekube/master/cloud-config/get_discovery_interface_ip.sh
+    content: |
+      #!/bin/bash
+      # Get's the IP of the interface that discovery will be
+      # accessible over
+      DISCOVERY_IF=%discovery_net_interface%
+      /usr/bin/ip -4 addr show $DISCOVERY_IF | /usr/bin/awk '/inet/ {print $2}' | /usr/bin/cut -d/ -f1 > /run/IP
+      /usr/bin/sed -i 's/^/IP=/' /run/IP
   - path: /run/wcnotify.sh
     permissions: '0755'
-    content: 
-      get_file: https://raw.githubusercontent.com/DigitalPacific/corekube/master/cloud-config/wcnotify.sh
+    content: |
+      #!/bin/bash
+      %wc_notify% --data-binary '{"status": "SUCCESS"}'
 coreos:
   update:
     group: stable
